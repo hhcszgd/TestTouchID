@@ -22,7 +22,9 @@ class ViewController: UIViewController {
     }
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesBegan(touches, with: event)
-        DDTouchIDManager.performAuthorizeByTouchID()
+        DDTouchIDManager.performAuthorizeByTouchID { (type) in
+            print("指纹识别结果 : : : \(type)")
+        }
     }
 
 }

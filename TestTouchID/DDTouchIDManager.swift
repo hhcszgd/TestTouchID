@@ -55,9 +55,10 @@ class DDTouchIDManager: NSObject {
     static func status(code : Int32)  {
         print("\(#line) : \(code) ")
         switch code {
-        case kLAErrorAuthenticationFailed:
+        case kLAErrorAuthenticationFailed:// -1 指纹鉴定失败
             print("\(#line)")
-            
+            self.handle?(TMHandleType.authorizeFailure)
+            self.handle = nil
         case kLAErrorUserCancel: // -2 点击了 touchID界面显示 取消 和 输入密码时的取消(有两个按钮)
             print("\(#line)")
             self.handle?(TMHandleType.userCancel)
