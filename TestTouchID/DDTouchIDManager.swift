@@ -10,15 +10,20 @@ import UIKit
 import LocalAuthentication
 class DDTouchIDManager: NSObject {
     static let myContext = LAContext()
-    static func prepare() {
-        let myLocalizedReasonString = "指纹解锁"
-        
+    static var  handle : ((TMHandleType) -> ())?
+    static func performAuthorizeByTouchID(handle:((TMHandleType) -> ())? = nil) {
+        let myLocalizedReasonString = "鉴定指纹"
+        if let temp = handle {
+            self.handle = temp
+        }
         var authError: NSError?
         if #available(iOS 8.0, macOS 10.12.1, *) {
             if myContext.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &authError) {
                 myContext.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: myLocalizedReasonString) { success, evaluateError in
                     if success {
                         print("识别成功")
+                        self.handle?(TMHandleType.authorizeSuccess)
+                        self.handle = nil
                         // User authenticated successfully, take appropriate action
                     } else {
                         if let err = evaluateError as NSError?{
@@ -43,6 +48,8 @@ class DDTouchIDManager: NSObject {
         } else {
             // Fallback on earlier versions
             print("系统太老,不支持touchID")
+            self.handle?(TMHandleType.deviceNotSupport)
+            self.handle = nil
         }
     }
     static func status(code : Int32)  {
@@ -53,13 +60,15 @@ class DDTouchIDManager: NSObject {
             
         case kLAErrorUserCancel: // -2 点击了 touchID界面显示 取消 和 输入密码时的取消(有两个按钮)
             print("\(#line)")
-            
+            self.handle?(TMHandleType.userCancel)
+            self.handle = nil
         case kLAErrorUserFallback://-3 点击了输入密码
             print("\(#line)")
             performAuthorizeByPassword(title:"请输入密码")
         case kLAErrorSystemCancel: // -4 点击了touchID界面的取消 (只有一个取消按钮)
             print("\(#line)")
-            
+            self.handle?(TMHandleType.userCancel)
+            self.handle = nil
         case kLAErrorPasscodeNotSet:
             print("\(#line)")
             
@@ -89,6 +98,8 @@ class DDTouchIDManager: NSObject {
             print("\(#line)")
         default:
             print("\(#line)")
+            self.handle?(TMHandleType.authorizeFailure)
+            self.handle = nil
         }
     }
     
@@ -97,7 +108,7 @@ class DDTouchIDManager: NSObject {
         if self.myContext.canEvaluatePolicy(LAPolicy.deviceOwnerAuthentication, error: &authError) {
             self.myContext.evaluatePolicy(LAPolicy.deviceOwnerAuthentication, localizedReason: title) { (bool , error ) in
                 if bool{//通过
-                    
+                    self.performAuthorizeByTouchID()
                 }else  if let err = error as NSError?{
                     print(err.code)
                     print(err.userInfo)
@@ -106,7 +117,18 @@ class DDTouchIDManager: NSObject {
             }
         }else{
             print("未设置密码")
+            self.handle?(TMHandleType.passwordNotUsed)
+            self.handle = nil
         }
     }
     
+}
+
+enum TMHandleType : String {
+    case deviceNotSupport//设备不支持
+    case touchIDNotUsed//未开启touchID
+    case passwordNotUsed//未开启密码
+    case userCancel
+    case authorizeFailure
+    case authorizeSuccess
 }
